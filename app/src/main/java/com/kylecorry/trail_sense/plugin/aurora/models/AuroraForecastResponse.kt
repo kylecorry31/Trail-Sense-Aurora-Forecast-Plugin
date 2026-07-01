@@ -11,6 +11,7 @@ data class AuroraForecastResponse(
 )
 
 data class AuroraForecast(
+    val observationTimeMillis: Long,
     val forecastTimeMillis: Long,
     val points: List<AuroraForecastPoint>
 )

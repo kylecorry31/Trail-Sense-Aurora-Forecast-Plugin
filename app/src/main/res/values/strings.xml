@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name" translatable="false">Trail Sense Aurora Forecast Plugin</string>
     <string name="instructions">Aurora forecast map layer is ready to use in Trail Sense.</string>
+    <string name="forecast_loading">Loading latest aurora forecast...</string>
+    <string name="forecast_unavailable">Forecast times unavailable</string>
+    <string name="last_update_time">Last update: %1$s</string>
+    <string name="forecast_time">Forecast time: %1$s</string>
 </resources>

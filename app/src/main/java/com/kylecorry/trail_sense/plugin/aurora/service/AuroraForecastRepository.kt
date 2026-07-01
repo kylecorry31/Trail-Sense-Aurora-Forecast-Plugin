@@ -56,6 +56,7 @@ object AuroraForecastRepository {
     }
 
     private fun AuroraForecastResponse.toForecast(): AuroraForecast? {
+        val observationTime = observationTime?.let { Instant.parse(it).toEpochMilli() } ?: return null
         val forecastTime = forecastTime?.let { Instant.parse(it).toEpochMilli() } ?: return null
         val points = coordinates.mapNotNull { coordinate ->
             if (coordinate.size < 3) {
@@ -74,7 +75,7 @@ object AuroraForecastRepository {
             )
         }
 
-        return AuroraForecast(forecastTime, points)
+        return AuroraForecast(observationTime, forecastTime, points)
     }
 
     private fun normalizeLongitude(longitude: Double): Double {
