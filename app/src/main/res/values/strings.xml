@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name" translatable="false">Trail Sense Aurora Forecast Plugin</string>
+    <string name="instructions">Aurora forecast map layer is ready to use in Trail Sense.</string>
+</resources>
