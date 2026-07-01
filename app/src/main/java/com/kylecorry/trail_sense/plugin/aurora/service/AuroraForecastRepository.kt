@@ -56,7 +56,8 @@ object AuroraForecastRepository {
     }
 
     private fun AuroraForecastResponse.toForecast(): AuroraForecast? {
-        val observationTime = observationTime?.let { Instant.parse(it).toEpochMilli() } ?: return null
+        val observationTime =
+            observationTime?.let { Instant.parse(it).toEpochMilli() } ?: return null
         val forecastTime = forecastTime?.let { Instant.parse(it).toEpochMilli() } ?: return null
         val points = coordinates.mapNotNull { coordinate ->
             if (coordinate.size < 3) {
@@ -64,7 +65,8 @@ object AuroraForecastRepository {
             }
 
             val probability = coordinate[2].toInt()
-            if (probability <= 0) {
+            // SPWC produces false readings near the equator and some readings are just noise
+            if (coordinate[1] in -5.0..5.0 && probability < 5) {
                 return@mapNotNull null
             }
 

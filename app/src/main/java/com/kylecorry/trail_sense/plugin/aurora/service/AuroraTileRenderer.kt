@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.graphics.createBitmap
+import com.kylecorry.trail_sense.plugin.aurora.andromeda_temp.colormaps.SampledColorMap
 import com.kylecorry.trail_sense.plugin.aurora.models.AuroraForecastPoint
 import com.kylecorry.trail_sense.plugin.aurora.models.MapTile
 import com.kylecorry.trail_sense.plugin.aurora.models.MapTileLayerRequest
@@ -18,25 +19,19 @@ import kotlin.math.tan
 object AuroraTileRenderer {
     private const val TILE_SIZE = 256
     private const val CELL_SIZE_DEGREES = 1.0
-    private val NOAA_COLOR_STOPS = listOf(
-        ColorStop(0f, 0, 204, 0),
-        ColorStop(5f, 0, 214, 0),
-        ColorStop(10f, 20, 223, 17),
-        ColorStop(25f, 44, 246, 4),
-        ColorStop(50f, 254, 254, 0),
-        ColorStop(75f, 255, 147, 2),
-        ColorStop(90f, 253, 6, 0),
-        ColorStop(100f, 204, 0, 0)
-    )
-    private val NOAA_ALPHA_STOPS = listOf(
-        AlphaStop(0f, 0),
-        AlphaStop(1f, 2),
-        AlphaStop(5f, 12),
-        AlphaStop(10f, 175),
-        AlphaStop(25f, 215),
-        AlphaStop(50f, 225),
-        AlphaStop(90f, 235),
-        AlphaStop(100f, 235)
+    private val NOAA_COLOR_MAP = SampledColorMap(
+        mapOf(
+            0f to Color.argb(0, 0, 204, 0),
+            0.025f to Color.argb(16, 0, 214, 0),
+            0.05f to Color.argb(64, 0, 214, 0),
+            0.10f to Color.argb(255, 20, 223, 17),
+            0.25f to Color.argb(255, 44, 246, 4),
+            0.50f to Color.argb(255, 254, 254, 0),
+            0.75f to Color.argb(255, 255, 147, 2),
+            0.90f to Color.argb(255, 253, 6, 0),
+            1f to Color.argb(255, 204, 0, 0)
+        ),
+        interpolationResolution = 0.01f
     )
 
     suspend fun render(request: MapTileLayerRequest): ByteArray? {
@@ -113,40 +108,7 @@ object AuroraTileRenderer {
 
     private fun AuroraForecastPoint.color(): Int {
         val scaledProbability = probability.toFloat().coerceIn(0f, 100f)
-        val color = interpolateColor(scaledProbability)
-        val alpha = interpolateAlpha(scaledProbability)
-        return Color.argb(alpha, color.red, color.green, color.blue)
-    }
-
-    private fun interpolateColor(probability: Float): ColorStop {
-        val start = NOAA_COLOR_STOPS.last { probability >= it.probability }
-        val end = NOAA_COLOR_STOPS.first { probability <= it.probability }
-        if (start.probability == end.probability) {
-            return start
-        }
-
-        val ratio = (probability - start.probability) / (end.probability - start.probability)
-        return ColorStop(
-            probability,
-            lerp(start.red, end.red, ratio),
-            lerp(start.green, end.green, ratio),
-            lerp(start.blue, end.blue, ratio)
-        )
-    }
-
-    private fun interpolateAlpha(probability: Float): Int {
-        val start = NOAA_ALPHA_STOPS.last { probability >= it.probability }
-        val end = NOAA_ALPHA_STOPS.first { probability <= it.probability }
-        if (start.probability == end.probability) {
-            return start.alpha
-        }
-
-        val ratio = (probability - start.probability) / (end.probability - start.probability)
-        return lerp(start.alpha, end.alpha, ratio)
-    }
-
-    private fun lerp(start: Int, end: Int, ratio: Float): Int {
-        return (start + (end - start) * ratio).toInt()
+        return NOAA_COLOR_MAP.getColor(scaledProbability / 100f)
     }
 
     private fun Bitmap.toPng(): ByteArray {
@@ -154,16 +116,4 @@ object AuroraTileRenderer {
         compress(Bitmap.CompressFormat.PNG, 100, stream)
         return stream.toByteArray()
     }
-
-    private data class ColorStop(
-        val probability: Float,
-        val red: Int,
-        val green: Int,
-        val blue: Int
-    )
-
-    private data class AlphaStop(
-        val probability: Float,
-        val alpha: Int
-    )
 }
