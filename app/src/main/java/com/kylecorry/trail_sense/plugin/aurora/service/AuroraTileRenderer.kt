@@ -5,6 +5,10 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import androidx.core.graphics.createBitmap
+import com.kylecorry.sol.math.Vector2
+import com.kylecorry.sol.science.geography.projections.MercatorProjection
+import com.kylecorry.trail_sense.plugin.aurora.andromeda_temp.MAX_LATITUDE
+import com.kylecorry.trail_sense.plugin.aurora.andromeda_temp.MIN_LATITUDE
 import com.kylecorry.trail_sense.plugin.aurora.andromeda_temp.colormaps.SampledColorMap
 import com.kylecorry.trail_sense.plugin.aurora.models.AuroraForecastPoint
 import com.kylecorry.trail_sense.plugin.aurora.models.MapTile
@@ -12,9 +16,6 @@ import com.kylecorry.trail_sense.plugin.aurora.models.MapTileLayerRequest
 import com.kylecorry.trail_sense.plugin.aurora.models.TileBounds
 import java.io.ByteArrayOutputStream
 import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.ln
-import kotlin.math.tan
 
 object AuroraTileRenderer {
     private const val TILE_SIZE = 256
@@ -62,15 +63,12 @@ object AuroraTileRenderer {
         for (longitude in point.renderLongitudes()) {
             val west = longitude - CELL_SIZE_DEGREES / 2.0
             val east = longitude + CELL_SIZE_DEGREES / 2.0
-            val north = (point.latitude + CELL_SIZE_DEGREES / 2.0).coerceAtMost(85.05112878)
-            val south = (point.latitude - CELL_SIZE_DEGREES / 2.0).coerceAtLeast(-85.05112878)
+            val north = (point.latitude + CELL_SIZE_DEGREES / 2.0).coerceAtMost(MercatorProjection.MAX_LATITUDE)
+            val south = (point.latitude - CELL_SIZE_DEGREES / 2.0).coerceAtLeast(MercatorProjection.MIN_LATITUDE)
 
-            val left = longitudeToPixel(tile, west)
-            val right = longitudeToPixel(tile, east)
-            val top = latitudeToPixel(tile, north)
-            val bottom = latitudeToPixel(tile, south)
-
-            canvas.drawRect(left, top, right, bottom, paint)
+            val topLeft = toPixels(tile, north, west)
+            val bottomRight = toPixels(tile, south, east)
+            canvas.drawRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y, paint)
         }
     }
 
@@ -92,18 +90,25 @@ object AuroraTileRenderer {
         return listOf(longitude, longitude - 360.0, longitude + 360.0)
     }
 
-    private fun longitudeToPixel(tile: MapTile, longitude: Double): Float {
+    private fun toPixels(tile: MapTile, latitude: Double, longitude: Double): Vector2 {
         val n = 1 shl tile.z
-        val globalPixel = ((longitude + 180.0) / 360.0) * n * TILE_SIZE
-        return (globalPixel - tile.x * TILE_SIZE).toFloat()
+        val projection = MercatorProjection(tileScale(n))
+        val clamped = latitude.coerceIn(MercatorProjection.MIN_LATITUDE, MercatorProjection.MAX_LATITUDE)
+        val projected = projection.toPixels(clamped, longitude)
+        val globalX = projected.x + worldSize(n) / 2.0
+        val globalY = worldSize(n) / 2.0 - projected.y
+        return Vector2(
+            (globalX - tile.x * TILE_SIZE).toFloat(),
+            (globalY - tile.y * TILE_SIZE).toFloat()
+        )
     }
 
-    private fun latitudeToPixel(tile: MapTile, latitude: Double): Float {
-        val clamped = latitude.coerceIn(-85.05112878, 85.05112878)
-        val latRadians = Math.toRadians(clamped)
-        val n = 1 shl tile.z
-        val globalPixel = (1.0 - ln(tan(latRadians) + 1.0 / cos(latRadians)) / PI) / 2.0 * n * TILE_SIZE
-        return (globalPixel - tile.y * TILE_SIZE).toFloat()
+    private fun tileScale(tileCount: Int): Float {
+        return (worldSize(tileCount) / (2.0 * PI)).toFloat()
+    }
+
+    private fun worldSize(tileCount: Int): Double {
+        return tileCount * TILE_SIZE.toDouble()
     }
 
     private fun AuroraForecastPoint.color(): Int {
