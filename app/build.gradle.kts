@@ -19,6 +19,16 @@ android {
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        create("github") {
+            if (System.getProperty("github_store_file") != null) {
+                storeFile = file(System.getProperty("github_store_file"))
+                storePassword = System.getProperty("github_store_password")
+                keyAlias = System.getProperty("github_key_alias")
+                keyPassword = System.getProperty("github_key_password")
+            }
+        }
+    }
     androidResources {
         // Support for auto-generated locales for per-app language settings
         generateLocaleConfig = true
@@ -30,11 +40,14 @@ android {
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
-            applicationIdSuffix = ".release"
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        create("github") {
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("github")
         }
         create("nightly") {
             initWith(getByName("debug"))
